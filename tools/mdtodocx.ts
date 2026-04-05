@@ -7,8 +7,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { convertMarkdownToDocx, type Options } from "@mohtasham/md-to-docx";
 import { tool } from "@opencode-ai/plugin";
-import { convertMarkdownToDocx } from "@mohtasham/md-to-docx";
 
 export default tool({
   description: "Convert Markdown files to DOCX using @mohtasham/md-to-docx",
@@ -65,7 +65,7 @@ export default tool({
 
       const markdownContent = fs.readFileSync(inputPath, "utf-8");
 
-      const options: any = {};
+      const options: Options = {};
 
       if (
         args.documentType ||

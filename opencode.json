@@ -1,15 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-wakatime", "@zenobius/opencode-skillful"],
   "mcp": {
-    "web-search": {
+    "docker-mcp": {
       "type": "local",
-      "command": ["npx", "-y", "open-websearch@latest"],
-      "environment": {
-        "MODE": "stdio",
-        "DEFAULT_SEARCH_ENGINE": "duckduckgo"
-      },
+      "command": ["docker", "mcp", "gateway", "run"],
       "enabled": true
     }
-  },
-  "plugin": ["opencode-wakatime", "@zenobius/opencode-skillful"]
+  }
 }
