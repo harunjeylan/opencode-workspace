@@ -229,7 +229,6 @@ Continue based on their answers to determine folder structure.
 | Task | Tool/Agent |
 |------|------------|
 | Convert PDF/DOCX/PPTX | @markitdown |
-| Split document into notes | @split-docs |
 | Create documents | write-doc skill |
 | Create presentations | write-ppt skill |
 | Research topics | @researcher |
