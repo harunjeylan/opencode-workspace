@@ -5,9 +5,8 @@
  * Generates speech audio from text or text files (.md, .txt).
  *
  * Storage:
- *   .opencode/speech/[topic]/           - Output directory
- *     ├── full-speech.mp3               - Merged audio
- *     └── chunks/                       - Individual chunks
+ *   workingdir/.opencode/speech/[title]/chunks/  - Temporary chunk files
+ *   outputdir/full-speech.[mp3|wav]            - Final merged audio
  */
 
 import fs from "node:fs";
@@ -110,12 +109,13 @@ export default tool({
       .string()
       .optional()
       .describe("Path to .txt or .md file with text content"),
-    topic: tool.schema
+    workingdir: tool.schema
       .string()
-      .optional()
-      .describe(
-        "Topic/folder name for output (auto-generated if not provided)",
-      ),
+      .describe("Working directory for chunks (must be absolute path)"),
+    outputdir: tool.schema
+      .string()
+      .describe("Output directory for final audio (must be absolute path)"),
+    title: tool.schema.string().describe("Title for output folder"),
     voice: tool.schema
       .string()
       .optional()
@@ -132,18 +132,29 @@ export default tool({
     try {
       const workspaceRoot = context.worktree || context.directory;
 
+      if (!args.workingdir || !path.isAbsolute(args.workingdir)) {
+        return "❌ Error: --workingdir is required and must be an absolute path\n\nUsage: @kokoro-tts text='...' title=my-title workingdir=/path/to/work";
+      }
+
+      if (!args.outputdir || !path.isAbsolute(args.outputdir)) {
+        return "❌ Error: --outputdir is required and must be an absolute path\n\nUsage: @kokoro-tts text='...' title=my-title workingdir=/path/to/work outputdir=/path/to/output";
+      }
+
+      if (!args.title) {
+        return "❌ Error: --title is required\n\nUsage: @kokoro-tts text='...' title=my-title workingdir=/path outputdir=/path";
+      }
+
       if (!args.text && !args.file) {
         return (
           "❌ Error: Either --text or --file is required\n\n" +
           "Usage:\n" +
-          "  @kokoro-tts text='Hello world' topic=my-topic\n" +
-          "  @kokoro-tts file=script.md topic=my-topic\n" +
-          "  @kokoro-tts text='Hello' voice=af_bella format=wav"
+          "  @kokoro-tts text='Hello world' title=my-topic workingdir=/tmp outputdir=/output\n" +
+          "  @kokoro-tts file=script.md title=my-topic workingdir=/tmp outputdir=/output\n" +
+          "  @kokoro-tts text='Hello' title=my-topic workingdir=/tmp outputdir=/output voice=af_bella format=wav"
         );
       }
 
       let inputText = args.text;
-      let fileName = args.file;
 
       if (args.file) {
         const filePath = path.isAbsolute(args.file)
@@ -158,10 +169,6 @@ export default tool({
         const ext = path.extname(args.file).toLowerCase();
 
         if (ext === ".md") {
-          const titleMatch = content.match(/^#\s+(.+)$/m);
-          if (titleMatch) {
-            fileName = titleMatch[1].trim();
-          }
           const cleanContent = content
             .replace(/^#\s+.+$/gm, "")
             .replace(/```[\s\S]*?```/g, "")
@@ -182,34 +189,12 @@ export default tool({
 
       const wordCount = inputText.split(/\s+/).filter(Boolean).length;
 
-      let topic = args.topic;
-      if (!topic) {
-        if (fileName) {
-          topic = fileName
-            .replace(/\.[^.]+$/, "")
-            .toLowerCase()
-            .replace(/\s+/g, "-");
-        } else {
-          const firstWords = inputText.split(/\s+/).slice(0, 5).join(" ");
-          const suggested = firstWords
-            .toLowerCase()
-            .replace(/[^a-z0-9\s]/g, "")
-            .replace(/\s+/g, "-")
-            .slice(0, 30);
-          return (
-            `❌ Topic not provided. Please provide a --topic name for the output folder.\n\n` +
-            `Suggested: ${suggested}\n\n` +
-            `Usage: @kokoro-tts text='...' topic=${suggested}`
-          );
-        }
-      }
-
-      topic = topic
+      const title = args.title
         .toLowerCase()
         .replace(/[^a-z0-9-_]/g, "-")
         .replace(/-+/g, "-");
 
-      let voice = args.voice;
+      const voice = args.voice;
       const format = args.format || "mp3";
 
       if (!voice) {
@@ -221,11 +206,11 @@ export default tool({
           `🎤 Voice not specified. Default: am_adam\n\n` +
           `Available voices:\n${allVoices}\n\n` +
           `To use default (am_adam):\n` +
-          `  @kokoro-tts text='Hello world' topic=my-topic\n\n` +
+          `  @kokoro-tts text='Hello world' title=my-topic workingdir=/tmp outputdir=/output\n\n` +
           `To use a different voice:\n` +
-          `  @kokoro-tts text='Hello world' topic=my-topic voice=af_bella\n\n` +
+          `  @kokoro-tts text='Hello world' title=my-topic workingdir=/tmp outputdir=/output voice=af_bella\n\n` +
           `To use wav format:\n` +
-          `  @kokoro-tts text='Hello world' topic=my-topic format=wav`
+          `  @kokoro-tts text='Hello world' title=my-topic workingdir=/tmp outputdir=/output format=wav`
         );
       }
 
@@ -239,8 +224,7 @@ export default tool({
         );
       }
 
-      const speechDir = path.join(workspaceRoot, ".opencode", "speech", topic);
-      const chunksDir = path.join(speechDir, "chunks");
+      const chunksDir = path.join(args.workingdir, ".opencode", "speech", title, "chunks");
 
       fs.mkdirSync(chunksDir, { recursive: true });
 
@@ -264,8 +248,10 @@ export default tool({
 
       await new Promise((resolve) => setTimeout(resolve, 500));
 
+      fs.mkdirSync(args.outputdir, { recursive: true });
+
       const outputFile = path.join(
-        speechDir,
+        args.outputdir,
         `full-speech.${format === "wav" ? "wav" : "mp3"}`,
       );
 
@@ -291,11 +277,10 @@ export default tool({
         fs.renameSync(audioFiles[0], outputFile);
       }
 
-      for (const file of audioFiles) {
-        try {
-          fs.unlinkSync(file);
-        } catch {}
-      }
+      const titleDir = path.join(args.workingdir, ".opencode", "speech", title);
+      try {
+        fs.rmSync(titleDir, { recursive: true, force: true });
+      } catch {}
 
       if (!fs.existsSync(outputFile)) {
         return `❌ Error: Output file not generated`;
@@ -316,7 +301,7 @@ export default tool({
         `📦 Chunks:   ${textChunks.length}`,
         `💾 Size:     ${fileSizeKB} KB`,
         ``,
-        `Topic: ${topic}`,
+        `Title: ${title}`,
       ].join("\n");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
