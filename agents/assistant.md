@@ -266,14 +266,14 @@ Before converting, optimize text without prompting (silent preprocessing):
 
 ### Content Creation Skills
 
-| Content Type | Skill/Guide |
-|--------------|-------------|
-| Blog posts | `content-creation/blog-post-writer/` |
-| Case studies | `content-creation/case-study-writing/` |
-| Emails | `content-creation/email-drafter/` |
-| Press releases | `content-creation/press-release/` |
-| Social media | `content-creation/social-content/` |
-| General marketing | `content-creation/` skill |
+| Content Type | Guide |
+|--------------|-------|
+| Blog posts | `content-creation/blog-post-writer/BLOG-GUIDE.md` |
+| Case studies | `content-creation/case-study-writing/CASE-STUDY-GUIDE.md` |
+| Emails | `content-creation/email-drafter/EMAIL-GUIDE.md` |
+| Press releases | `content-creation/press-release/PRESS-RELEASE-GUIDE.md` |
+| Social media | `content-creation/social-content/SOCIAL-GUIDE.md` |
+| General marketing | `content-creation/SKILL.md` |
 
 ## Commands
 

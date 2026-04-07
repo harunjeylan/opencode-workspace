@@ -14,18 +14,18 @@ For specialized content creation, use these dedicated guides:
 
 | Content Type | Guide | When to Use |
 |--------------|-------|-------------|
-| Blog Posts | `blog-post-writer/SKILL.md` | Personal voice, narrative frameworks, technical blogs |
-| Case Studies | `case-study-writing/SKILL.md` | B2B success stories with metrics, STAR framework |
-| Emails | `email-drafter/SKILL.md` | Professional business emails, templates for 20+ scenarios |
-| Press Releases | `press-release/SKILL.md` | Product launches, announcements, Working Backwards method |
-| Social Media | `social-content/SKILL.md` | LinkedIn, Twitter, Instagram, TikTok content and strategy |
+| Blog Posts | `blog-post-writer/BLOG-GUIDE.md` | Personal voice, narrative frameworks, technical blogs |
+| Case Studies | `case-study-writing/CASE-STUDY-GUIDE.md` | B2B success stories with metrics, STAR framework |
+| Emails | `email-drafter/EMAIL-GUIDE.md` | Professional business emails, templates for 20+ scenarios |
+| Press Releases | `press-release/PRESS-RELEASE-GUIDE.md` | Product launches, announcements, Working Backwards method |
+| Social Media | `social-content/SOCIAL-GUIDE.md` | LinkedIn, Twitter, Instagram, TikTok content and strategy |
 
 ---
 
 ## Content Type Templates
 
 ### Blog Post Structure
-> For detailed blog writing with narrative frameworks, voice guidance, and 27 story structures, see `blog-post-writer/SKILL.md`.
+> For detailed blog writing with narrative frameworks, voice guidance, and 27 story structures, see `blog-post-writer/BLOG-GUIDE.md`.
 
 Quick structure:
 1. **Headline** — clear, benefit-driven, includes primary keyword (aim for 60 characters or less for SEO)
@@ -35,7 +35,7 @@ Quick structure:
 5. **Meta description** — under 160 characters, includes primary keyword, compels the click.
 
 ### Social Media Post Structure
-> For detailed social media strategy, platform guides, and repurposing workflows, see `social-content/SKILL.md`.
+> For detailed social media strategy, platform guides, and repurposing workflows, see `social-content/SOCIAL-GUIDE.md`.
 
 Quick structure:
 - **Hook** — first line grabs attention (question, bold statement, number)
@@ -44,7 +44,7 @@ Quick structure:
 - **Hashtags** — 3-5 relevant hashtags (platform-dependent)
 
 ### Email Newsletter Structure
-> For professional email templates and scenario-specific guidance, see `email-drafter/SKILL.md`.
+> For professional email templates and scenario-specific guidance, see `email-drafter/EMAIL-GUIDE.md`.
 
 Quick structure:
 - **Subject line** — under 50 characters, creates curiosity or states clear value
@@ -64,7 +64,7 @@ Quick structure:
 - **Final CTA** — repeat the primary call to action
 
 ### Press Release Structure
-> For Amazon "Working Backwards" methodology and detailed press release workflows, see `press-release/SKILL.md`.
+> For Amazon "Working Backwards" methodology and detailed press release workflows, see `press-release/PRESS-RELEASE-GUIDE.md`.
 
 Quick structure:
 - **Headline** — factual, newsworthy, under 80 characters
@@ -76,7 +76,7 @@ Quick structure:
 - **Media contact** — name, email, phone
 
 ### Case Study Structure
-> For B2B case studies with STAR framework, data visualization, and metrics presentation, see `case-study-writing/SKILL.md`.
+> For B2B case studies with STAR framework, data visualization, and metrics presentation, see `case-study-writing/CASE-STUDY-GUIDE.md`.
 
 Quick structure:
 - **Title** — "[Customer] achieves [result] with [product]"
