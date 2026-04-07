@@ -7,6 +7,7 @@ courses/             # Course content
 │   │   ├── module-01/
 │   │   │   ├── lessons/     # Lesson content
 │   │   │   ├── videos/      # Video files
+│   │   │   ├── voiceovers/  # TTS-generated voiceovers
 │   │   │   ├── resources/   # Downloadable resources
 │   │   │   └── assessments/ # Quizzes, assignments
 │   │   └── module-02/
@@ -23,6 +24,10 @@ resources/           # Teaching resources
 ├── handouts/        # Printable handouts
 ├── worksheets/      # Practice worksheets
 └── templates/       # Document templates
+voiceovers/          # Voiceover production
+├── scripts/         # Original scripts
+├── processed/       # TTS-optimized scripts
+└── audio/           # Generated audio files
 marketing/           # Course marketing
 ├── sales-pages/     # Sales page copy
 ├── emails/          # Marketing emails

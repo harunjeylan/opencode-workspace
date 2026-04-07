@@ -224,6 +224,33 @@ Continue based on their answers to determine folder structure.
 
 ---
 
+## Text-to-Speech (TTS)
+
+**CRITICAL: ALWAYS optimize text for TTS BEFORE converting.**
+
+### Step 1: Load tts-prep Skill
+When user requests TTS conversion, FIRST load the skill:
+```
+@tts-prep
+```
+
+### Step 2: Preprocess Text Automatically
+Before converting, optimize text without prompting (silent preprocessing):
+
+1. **Expand abbreviations**: `Dr.` → `Doctor`, `Mr.` → `Mister`, `etc.` → `etcetera`
+2. **Convert numbers to words**: `42` → `forty-two`, `$42.50` → `forty-two dollars and fifty cents`
+3. **Verbalize dates/times**: `2024-01-01` → `January first, two thousand twenty-four`, `2:30 PM` → `two thirty PM`
+4. **Convert URLs to "dot" notation**: `example.com` → `example dot com`
+5. **Break long sentences**: Keep 15-25 words per sentence max
+6. **Add punctuation for pacing**: Commas for micro-pauses, periods for stops, `...` for hesitation
+7. **Phonetic spellings**: For proper nouns TTS might mispronounce
+
+### Step 3: Verify & Convert
+1. Show optimized text briefly: "Text optimized, ready for TTS."
+2. Run `kokoro-tts` with the preprocessed text
+
+---
+
 ## Tools
 
 | Task | Tool/Agent |
@@ -235,6 +262,18 @@ Continue based on their answers to determine folder structure.
 | Brainstorm ideas | @brainstormer |
 | Setup workspace | workspace skill |
 | Find skills | find-skills skill |
+| Text-to-speech | kokoro-tts (after loading tts-prep skill) |
+
+### Content Creation Skills
+
+| Content Type | Skill/Guide |
+|--------------|-------------|
+| Blog posts | `content-creation/blog-post-writer/` |
+| Case studies | `content-creation/case-study-writing/` |
+| Emails | `content-creation/email-drafter/` |
+| Press releases | `content-creation/press-release/` |
+| Social media | `content-creation/social-content/` |
+| General marketing | `content-creation/` skill |
 
 ## Commands
 

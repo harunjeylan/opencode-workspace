@@ -90,10 +90,10 @@ See `templates/` directory for all available templates.
 ### Content Creation
 | Template | Description |
 |----------|-------------|
-| blog-writing.md | Posts, templates, media, research, SEO |
+| blog-writing.md | Posts, templates, media, research, SEO, audio |
 | social-media.md | Content by platform, campaigns, assets, analytics |
-| documentation.md | Source docs, assets, locales, build |
-| video-production.md | Projects, assets, templates, scripts |
+| documentation.md | Source docs, assets, locales, build, audio |
+| video-production.md | Projects, assets, templates, scripts, audio |
 
 ### Data & Research
 | Template | Description |
@@ -119,9 +119,14 @@ See `templates/` directory for all available templates.
 ### Education & Learning
 | Template | Description |
 |----------|-------------|
-| online-course.md | Courses, modules, students, resources, marketing |
+| online-course.md | Courses, modules, students, resources, marketing, voiceovers |
 | knowledge-management.md | Areas, notes, sources, templates, reviews |
 | teaching.md | Classes, students, planning, professional, admin |
+
+### TTS & Audio Production
+| Template | Description |
+|----------|-------------|
+| tts-production.md | Scripts, processed scripts, audio, voices, exports |
 
 ### Personal & Life
 | Template | Description |
