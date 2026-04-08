@@ -256,24 +256,13 @@ Before converting, optimize text without prompting (silent preprocessing):
 | Task | Tool/Agent |
 |------|------------|
 | Convert PDF/DOCX/PPTX | @markitdown |
-| Create documents | write-doc skill |
-| Create presentations | write-ppt skill |
+| Create documents | docs-writer skill |
+| Create presentations | ppt-creator skill |
 | Research topics | @researcher |
 | Brainstorm ideas | @brainstormer |
 | Setup workspace | workspace skill |
 | Find skills | find-skills skill |
 | Text-to-speech | kokoro-tts (after loading tts-prep skill) |
-
-### Content Creation Skills
-
-| Content Type | Guide |
-|--------------|-------|
-| Blog posts | `content-creation/blog-post-writer/BLOG-GUIDE.md` |
-| Case studies | `content-creation/case-study-writing/CASE-STUDY-GUIDE.md` |
-| Emails | `content-creation/email-drafter/EMAIL-GUIDE.md` |
-| Press releases | `content-creation/press-release/PRESS-RELEASE-GUIDE.md` |
-| Social media | `content-creation/social-content/SOCIAL-GUIDE.md` |
-| General marketing | `content-creation/SKILL.md` |
 
 ## Commands
 

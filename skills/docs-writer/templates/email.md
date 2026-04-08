@@ -1,56 +1,15 @@
 ---
-# ═══════════════════════════════════════════════════════════════════════════════
-# CLAUDE OFFICE SKILL - Enhanced Metadata v2.0
-# ═══════════════════════════════════════════════════════════════════════════════
-
-# Basic Information
-name: email-drafter
-description: ">"
-version: "1.0.0"
-author: Claude Office Skills Contributors
-license: MIT
-
-# Categorization
-category: productivity
-tags:
-  - email
-  - writing
-  - communication
-department: All
-
-# AI Model Compatibility
-models:
-  recommended:
-    - claude-sonnet-4
-    - claude-opus-4
-  compatible:
-    - claude-3-5-sonnet
-    - gpt-4
-    - gpt-4o
-
-# MCP Tools Integration
-mcp:
-  server: office-mcp
-  tools:
-    - create_docx
-
-# Skill Capabilities
-capabilities:
-  - email_writing
-  - professional_tone
-  - template_usage
-
-# Language Support
-languages:
-  - en
-  - zh
+title: Professional Email
+description: Templates and guidelines for drafting professional business emails
+created: 2024-01-01
+use-case: Responding to inquiries, follow-ups, requests, cold outreach, difficult news
 ---
 
-# Email Drafter
+# Professional Email Templates
 
 ## Overview
 
-This skill helps you draft professional emails for various business scenarios. It understands context, maintains appropriate tone, and follows email best practices for different situations.
+Draft professional emails for various business scenarios with appropriate tone and structure.
 
 **Use Cases:**
 - Responding to client inquiries
@@ -60,22 +19,7 @@ This skill helps you draft professional emails for various business scenarios. I
 - Cold outreach and introductions
 - Thank you and appreciation emails
 
-## How to Use
-
-1. Tell me the email scenario (reply, new message, follow-up, etc.)
-2. Provide context: recipient, relationship, purpose
-3. Share any specific points to include
-4. I'll draft an appropriate email
-
-**Example prompts:**
-- "Draft a follow-up email after our sales meeting with Acme Corp"
-- "Write a polite reminder for an overdue invoice"
-- "Help me decline this meeting request professionally"
-- "Draft a cold outreach email to a potential partner"
-
-## Email Templates & Structures
-
-### Professional Email Structure
+## Professional Email Structure
 
 ```
 Subject: [Clear, specific, action-oriented]
@@ -93,7 +37,7 @@ Subject: [Clear, specific, action-oriented]
 [Signature]
 ```
 
-### Tone Guidelines
+## Tone Guidelines
 
 | Scenario | Tone | Key Elements |
 |----------|------|--------------|
@@ -104,7 +48,7 @@ Subject: [Clear, specific, action-oriented]
 | Difficult news | Empathetic, clear | Acknowledge, explain, next steps |
 | Follow-up | Polite, persistent | Reference, value add, easy response |
 
-### Subject Line Best Practices
+## Subject Line Best Practices
 
 **Good subject lines:**
 - "Action Required: Q4 Budget Approval by Friday"
@@ -118,9 +62,10 @@ Subject: [Clear, specific, action-oriented]
 - ALL CAPS or excessive punctuation
 - Misleading clickbait
 
-### Common Email Scenarios
+## Common Email Templates
 
-#### 1. Meeting Follow-up
+### Meeting Follow-up
+
 ```
 Subject: Follow-up: [Meeting Topic] - Next Steps
 
@@ -140,7 +85,8 @@ Best regards,
 [Your name]
 ```
 
-#### 2. Request/Ask Email
+### Request/Ask Email
+
 ```
 Subject: Request: [Specific Ask]
 
@@ -162,7 +108,8 @@ Best,
 [Your name]
 ```
 
-#### 3. Polite Decline
+### Polite Decline
+
 ```
 Subject: RE: [Original Subject]
 
@@ -180,7 +127,8 @@ Best regards,
 [Your name]
 ```
 
-#### 4. Apology/Issue Resolution
+### Apology/Issue Resolution
+
 ```
 Subject: Apology: [Brief Issue Description]
 
@@ -204,7 +152,7 @@ Sincerely,
 
 ## Output Format
 
-When I draft an email, I'll provide:
+When drafting an email, provide:
 
 ```
 ## Email Draft
@@ -227,38 +175,7 @@ When I draft an email, I'll provide:
 
 ## Customization Options
 
-Tell me your preferences:
 - **Tone**: Formal, semi-formal, casual
 - **Length**: Brief (2-3 sentences), standard, detailed
 - **Style**: Direct, diplomatic, enthusiastic
 - **Sign-off**: Best, Regards, Thanks, Cheers, etc.
-
-## Limitations
-
-- Cannot send emails (draft only)
-- May not know your organization's specific communication norms
-- Should be reviewed for accuracy of names, dates, and details
-- Not suitable for legal or highly sensitive communications without review
-
-## Examples
-
-### Example 1: Follow-up After Interview
-
-**User:** "Draft a thank-you email after my job interview at TechCorp for a Product Manager role. I met with Sarah Chen, VP of Product."
-
-**Output:**
-
-**Subject:** Thank You - Product Manager Interview
-
-Dear Sarah,
-
-Thank you for taking the time to meet with me today about the Product Manager position at TechCorp. I thoroughly enjoyed learning about the team's vision for expanding into enterprise markets.
-
-Our conversation reinforced my excitement about this opportunity. I'm particularly drawn to the challenge of building the analytics dashboard you mentioned, and I believe my experience leading similar initiatives at my current role would translate well.
-
-I'm very interested in joining the TechCorp team and contributing to your product strategy. Please don't hesitate to reach out if you need any additional information from me.
-
-Thank you again for the opportunity. I look forward to hearing from you.
-
-Best regards,
-[Your name]

@@ -1,10 +1,10 @@
 ---
-name: write-doc
+name: docs-writer
 description: Professional document writing skill with templates and structured workflow
 version: "1.0.0"
 ---
 
-# Write Doc Skill
+# Docs Writer Skill
 
 Transform any input into professional documents through structured questioning.
 
@@ -60,6 +60,7 @@ See `templates/` folder:
 | guide.md | How-tos |
 | sop.md | Procedures |
 | brief.md | Executive |
+| email.md | Professional emails |
 
 See `examples/` for complete document examples.
 
