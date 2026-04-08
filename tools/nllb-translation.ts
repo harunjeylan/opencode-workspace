@@ -4,8 +4,8 @@
  * Translation tool using NLLB-200-distilled-600M model via Python.
  * Translates text between 100+ supported languages.
  *
- * Text is split into chunks (~350 words each / ~512 tokens) for optimal
- * translation quality and memory usage.
+ * Text is split into chunks (~300 words per chunk) for better sentence preservation.
+ * Each chunk is translated independently for optimal quality.
  *
  * Supports both text input/output and file input/output.
  *
@@ -110,6 +110,70 @@ const LANGUAGES: Record<string, string> = {
 function formatLanguage(langCode: string): string {
   const name = LANGUAGES[langCode];
   return name ? `${name} (${langCode})` : langCode;
+}
+
+/**
+ * Split text into sentences
+ */
+function splitIntoSentences(text: string): string[] {
+  if (!text || !text.trim()) return [];
+  
+  // Split by sentence boundaries: . ! ? or newlines
+  // Keep the delimiters with the sentences
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
+  
+  // If no sentence boundaries found, try to split by newlines
+  if (sentences.length < 2) {
+    const lines = text.split(/\n\n+/).filter(line => line.trim());
+    if (lines.length >= 2) {
+      return lines.map(line => line.trim());
+    }
+  }
+  
+  // Clean up whitespace
+  return sentences.map(s => s.trim()).filter(s => s.length > 0);
+}
+
+/**
+ * Split text into word-based chunks for optimal translation
+ * Keeps sentences together unless they exceed maxWords
+ */
+function splitIntoChunks(text: string, maxWords: number = 300): string[] {
+  if (!text || !text.trim()) return [];
+  
+  const sentences = splitIntoSentences(text);
+  
+  // If no sentences found, return the whole text
+  if (sentences.length === 0) {
+    return [text.trim()];
+  }
+  
+  const chunks: string[] = [];
+  let currentChunk = "";
+  let wordCount = 0;
+  
+  for (const sentence of sentences) {
+    const sentenceWords = sentence.split(/\s+/).filter(w => w.length > 0).length;
+    
+    // If adding this sentence exceeds the limit
+    if (wordCount + sentenceWords > maxWords && currentChunk) {
+      // Save current chunk and start a new one
+      chunks.push(currentChunk.trim());
+      currentChunk = sentence;
+      wordCount = sentenceWords;
+    } else {
+      // Add sentence to current chunk
+      currentChunk += (currentChunk ? " " : "") + sentence;
+      wordCount += sentenceWords;
+    }
+  }
+  
+  // Don't forget the last chunk
+  if (currentChunk) {
+    chunks.push(currentChunk.trim());
+  }
+  
+  return chunks.length > 0 ? chunks : [text.trim()];
 }
 
 /**
@@ -236,9 +300,63 @@ function writeOutputText(
   }
 }
 
+/**
+ * Translate a single chunk using Python script
+ */
+async function translateChunk(
+  pythonBin: string,
+  scriptPath: string,
+  text: string,
+  srcLang: string,
+  tgtLang: string
+): Promise<{ success: true; translation: string } | { success: false; error: string }> {
+  const inputJson = JSON.stringify({
+    text,
+    source_lang: srcLang,
+    target_lang: tgtLang,
+  });
+
+  try {
+    const proc = spawn([pythonBin, scriptPath], {
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    proc.stdin.write(inputJson);
+    proc.stdin.end();
+
+    const exitCode = await proc.exited;
+    const stdout = (await new Response(proc.stdout).text()).trim();
+    const stderr = (await new Response(proc.stderr).text()).trim();
+
+    if (exitCode !== 0) {
+      return {
+        success: false,
+        error: stderr || stdout || `Translation failed with exit code ${exitCode}`,
+      };
+    }
+
+    const data = JSON.parse(stdout);
+    if (!data.success) {
+      return {
+        success: false,
+        error: data.error || "Unknown translation error",
+      };
+    }
+
+    return { success: true, translation: data.translation };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
 export default tool({
   description:
-    "Translation tool using NLLB-200 model. Translates text between 100+ languages. Supports African, European, Asian, Middle Eastern, and South Asian languages. Can read from text or files (.txt, .md) and output to text or files.",
+    "Translation tool using NLLB-200 model. Translates text between 100+ languages. Supports African, European, Asian, Middle Eastern, and South Asian languages. Can read from text or files (.txt, .md) and output to text or files. Text is split into ~300 word chunks for better sentence preservation.",
 
   args: {
     text: tool.schema.string().optional().describe("Text to translate (required when inputType=text)"),
@@ -353,96 +471,65 @@ export default tool({
         ].join("\n");
       }
 
-      // Prepare input JSON
-      const inputJson = JSON.stringify({
-        text: inputText,
-        source_lang: srcLang,
-        target_lang: tgtLang,
-      });
+      // Split text into chunks (TypeScript controls chunking for better sentence preservation)
+      const chunks = splitIntoChunks(inputText, 300);
+      const totalChunks = chunks.length;
 
-      // Run Python script directly with stdin
-      let stdout = "";
-      let stderr = "";
-      let exitCode = 0;
+      // Translate each chunk independently
+      const translations: string[] = [];
+      let totalSourceWords = 0;
+      let totalTargetWords = 0;
 
-      try {
-        const proc = spawn([pythonBin, scriptPath], {
-          stdin: "pipe",
-          stdout: "pipe",
-          stderr: "pipe",
-          cwd: toolDir,
-        });
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const chunkWords = chunk.split(/\s+/).filter(w => w.length > 0).length;
+        totalSourceWords += chunkWords;
 
-        // Send input via stdin
-        proc.stdin.write(inputJson);
-        proc.stdin.end();
+        const result = await translateChunk(pythonBin, scriptPath, chunk, srcLang, tgtLang);
 
-        exitCode = await proc.exited;
-        stdout = (await new Response(proc.stdout).text()).trim();
-        stderr = (await new Response(proc.stderr).text()).trim();
-      } catch (err) {
-        return `❌ Error running translation: ${err instanceof Error ? err.message : String(err)}`;
-      }
-
-      if (exitCode !== 0) {
-        // Try to parse error from Python
-        try {
-          const errorData = JSON.parse(stdout || stderr);
-          return `❌ Translation error: ${errorData.error || stderr}`;
-        } catch {
-          return [
-            "❌ Translation failed",
-            "",
-            "Error:",
-            stderr || stdout || "Unknown error",
-            "",
-            "Make sure Python dependencies are installed:",
-            `  cd ${toolDir}`,
-            "  source .venv/bin/activate",
-            "  pip install transformers torch sentencepiece protobuf sacremoses",
-          ].join("\n");
+        if (!result.success) {
+          return `❌ Error translating chunk ${i + 1}/${totalChunks}: ${result.error}`;
         }
+
+        translations.push(result.translation);
+        totalTargetWords += result.translation.split(/\s+/).filter(w => w.length > 0).length;
       }
 
-      // Parse successful result
-      const data = JSON.parse(stdout);
-
-      if (!data.success) {
-        return `❌ Translation error: ${data.error}`;
-      }
-
-      const translation = data.translation;
+      // Combine translations
+      const finalTranslation = translations.join(" ");
 
       // Write output to file if needed
-      const outputResult = writeOutputText(outputType, outputFile, translation, workspaceRoot);
+      const outputResult = writeOutputText(outputType, outputFile, finalTranslation, workspaceRoot);
       if (!outputResult.success) {
         return outputResult.error;
       }
 
       // Build success message
+      const chunksInfo = totalChunks > 1 ? ` (${totalChunks} chunks)` : "";
+      
       if (outputType === "file") {
         return [
           `✅ Translation complete!`,
           ``,
           `📁 Input:   ${inputType === "file" ? inputFile : "(inline text)"}`,
           `📁 Output:  ${outputResult.filePath}`,
-          `📋 Source:  ${formatLanguage(data.source_lang)}`,
-          `📋 Target:  ${formatLanguage(data.target_lang)}`,
-          `📊 Words:   ${data.source_words.toLocaleString()} → ${data.target_words.toLocaleString()}`,
-          `📦 Chunks:  ${data.chunks}`,
+          `📋 Source:  ${formatLanguage(srcLang)}`,
+          `📋 Target:  ${formatLanguage(tgtLang)}`,
+          `📊 Words:   ${totalSourceWords.toLocaleString()} → ${totalTargetWords.toLocaleString()}`,
+          `📦 Chunks:  ${totalChunks}`,
         ].join("\n");
       } else {
         return [
           `✅ Translation complete!`,
           ``,
-          `📋 Source: ${formatLanguage(data.source_lang)}`,
-          `📋 Target: ${formatLanguage(data.target_lang)}`,
-          `📊 Words: ${data.source_words.toLocaleString()} → ${data.target_words.toLocaleString()}`,
-          `📦 Chunks: ${data.chunks}`,
+          `📋 Source: ${formatLanguage(srcLang)}`,
+          `📋 Target: ${formatLanguage(tgtLang)}`,
+          `📊 Words: ${totalSourceWords.toLocaleString()} → ${totalTargetWords.toLocaleString()}`,
+          `📦 Chunks: ${totalChunks}${chunksInfo}`,
           ``,
           `---`,
           ``,
-          translation,
+          finalTranslation,
         ].join("\n");
       }
     } catch (error) {

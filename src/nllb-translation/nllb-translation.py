@@ -5,17 +5,17 @@ NLLB Translation Script
 Translates text using Facebook's NLLB-200 model via Hugging Face Transformers.
 Reads input from stdin as JSON, outputs result as JSON to stdout.
 
+Note: Chunking is now handled by TypeScript for better sentence preservation.
+
 Usage:
     echo '{"text": "Hello", "source_lang": "eng_Latn", "target_lang": "fra_Latn"}' | python3 nllb-translation.py
 """
 
 import sys
 import json
-import re
 
-# Model and chunk settings
+# Model settings
 MODEL_ID = "facebook/nllb-200-distilled-600M"
-DEFAULT_CHUNK_SIZE = 350  # words per chunk (~512 tokens)
 
 # Supported languages mapping
 LANGUAGES = {
@@ -142,61 +142,6 @@ def translate_text(text, src_lang, tgt_lang):
     translated = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
     return translated
 
-def split_text_into_chunks(text, max_words=DEFAULT_CHUNK_SIZE):
-    """Split text into word-based chunks for optimal translation."""
-    if not text or not text.strip():
-        return []
-    
-    # Try to split by sentences first
-    sentences = re.findall(r'[^.!?।]+[.!?।]+', text)
-    
-    # If no sentence boundaries, try paragraphs
-    if len(sentences) < 2:
-        paragraphs = [p for p in text.split('\n\n') if p.strip()]
-        if len(paragraphs) >= 2:
-            chunks = []
-            current_chunk = ""
-            word_count = 0
-            
-            for para in paragraphs:
-                para_words = len(para.strip().split())
-                if word_count + para_words > max_words and current_chunk:
-                    chunks.append(current_chunk.strip())
-                    current_chunk = para
-                    word_count = para_words
-                else:
-                    current_chunk += ("\n\n" if current_chunk else "") + para
-                    word_count += para_words
-            
-            if current_chunk:
-                chunks.append(current_chunk.strip())
-            return chunks if chunks else [text]
-    
-    # Sentence-based chunking
-    chunks = []
-    current_chunk = ""
-    word_count = 0
-    
-    for sentence in sentences:
-        sentence_words = len(sentence.strip().split())
-        
-        if word_count + sentence_words > max_words and current_chunk:
-            chunks.append(current_chunk.strip())
-            current_chunk = sentence
-            word_count = sentence_words
-        else:
-            current_chunk += (" " if current_chunk else "") + sentence
-            word_count += sentence_words
-    
-    if current_chunk:
-        chunks.append(current_chunk.strip())
-    
-    return chunks if chunks else [text]
-
-def format_language(lang_code):
-    """Format language code for display."""
-    name = LANGUAGES.get(lang_code, lang_code)
-    return f"{name} ({lang_code})"
 
 def main():
     try:
@@ -220,38 +165,23 @@ def main():
         if tgt_lang not in LANGUAGES:
             raise ValueError(f"Unknown target language: {tgt_lang}")
         
-        # Count words
-        source_word_count = len(text.split())
-        
         # Show progress
-        print(f"Source: {format_language(src_lang)}", file=sys.stderr)
-        print(f"Target: {format_language(tgt_lang)}", file=sys.stderr)
-        print(f"Input: {source_word_count} words", file=sys.stderr)
+        print(f"Translating: {len(text.split())} words", file=sys.stderr)
         
-        # Split into chunks
-        chunks = split_text_into_chunks(text)
-        print(f"Chunks: {len(chunks)}", file=sys.stderr)
+        # Translate directly (no chunking - TypeScript handles that)
+        translation = translate_text(text, src_lang, tgt_lang)
         
-        # Translate each chunk
-        translated_chunks = []
-        for i, chunk in enumerate(chunks, 1):
-            print(f"Translating chunk {i}/{len(chunks)}...", file=sys.stderr)
-            translated = translate_text(chunk, src_lang, tgt_lang)
-            translated_chunks.append(translated)
-        
-        # Concatenate results
-        final_translation = " ".join(translated_chunks)
-        target_word_count = len(final_translation.split())
+        # Count words in translation
+        target_word_count = len(translation.split())
         
         # Output result as JSON
         result = {
             "success": True,
-            "translation": final_translation,
+            "translation": translation,
             "source_lang": src_lang,
             "target_lang": tgt_lang,
-            "source_words": source_word_count,
+            "source_words": len(text.split()),
             "target_words": target_word_count,
-            "chunks": len(chunks)
         }
         
         print(json.dumps(result))

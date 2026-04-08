@@ -26,8 +26,12 @@ interface SearchResult {
   engine: string;
 }
 
-interface FetchResult {
-  content: string;
+interface SearchResponse {
+  results?: SearchResult[];
+  data?: {
+    results?: SearchResult[];
+    totalResults?: number;
+  };
 }
 
 interface WebFetchResult {
@@ -91,9 +95,9 @@ async function ensureDaemon(): Promise<boolean> {
   return await startDaemon();
 }
 
-async function callDaemonApi<T>(endpoint: string, body: object): Promise<T> {
+async function callDaemonApi<T>(endpoint: string, body: object): Promise<T | null> {
   if (!(await ensureDaemon())) {
-    throw new Error("Daemon not available");
+    return null;
   }
 
   try {
@@ -104,7 +108,7 @@ async function callDaemonApi<T>(endpoint: string, body: object): Promise<T> {
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      return null;
     }
 
     interface ApiResponse<T> {
@@ -115,24 +119,17 @@ async function callDaemonApi<T>(endpoint: string, body: object): Promise<T> {
 
     const data = await response.json() as ApiResponse<T>;
 
-    if (data.status === "error") {
-      throw new Error(data.error?.message || "Unknown error");
-    }
-
-    if (!data.data) {
-      throw new Error("No data in response");
+    if (data.status === "error" || !data.data) {
+      return null;
     }
 
     return data.data;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error(String(error));
+  } catch {
+    return null;
   }
 }
 
-async function runCliCommand(args: string[]): Promise<string> {
+async function runCliCommand(args: string[]): Promise<string | null> {
   try {
     const proc = Bun.spawn(["npx", "-y", "open-websearch@latest", ...args], {
       stdout: "pipe",
@@ -145,22 +142,14 @@ async function runCliCommand(args: string[]): Promise<string> {
 
     if (exitCode === 0) {
       return stdout.trim();
-    } else {
-      throw new Error(stderr || `CLI exited with code ${exitCode}`);
     }
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error(String(error));
+    return null;
+  } catch {
+    return null;
   }
 }
 
-async function cliSearch(
-  query: string,
-  limit: number,
-  engines?: string[],
-): Promise<SearchResult[]> {
+async function cliSearch(query: string, limit: number, engines?: string[]): Promise<SearchResult[]> {
   const args = ["search", query, "--limit", limit.toString(), "--json"];
   if (engines && engines.length > 0) {
     args.push("--engines", engines.join(","));
@@ -169,6 +158,8 @@ async function cliSearch(
   }
 
   const output = await runCliCommand(args);
+  if (!output) return [];
+
   try {
     interface SearchResponse {
       status?: string;
@@ -182,7 +173,7 @@ async function cliSearch(
     return parsed.data?.results || parsed.results || [];
   } catch {
     const lines = output.split("\n");
-    const jsonLine = lines.find(line => line.startsWith("{"));
+    const jsonLine = lines.find((line) => line.startsWith("{"));
     if (jsonLine) {
       interface SearchResponse {
         status?: string;
@@ -199,38 +190,34 @@ async function cliSearch(
   }
 }
 
-async function cliFetch(
-  fetchType: string,
-  url: string,
-): Promise<FetchResult> {
+async function cliFetch(fetchType: string, url: string): Promise<string> {
   const args = [`fetch-${fetchType}`, url, "--json"];
   const output = await runCliCommand(args);
+  if (!output) return "";
+
   try {
     interface FetchResponse {
       data?: { content?: string };
       content?: string;
     }
     const parsed = JSON.parse(output) as FetchResponse;
-    return { content: parsed.data?.content || parsed.content || "" };
+    return parsed.data?.content || parsed.content || "";
   } catch {
     const lines = output.split("\n");
-    const jsonLine = lines.find(line => line.startsWith("{"));
+    const jsonLine = lines.find((line) => line.startsWith("{"));
     if (jsonLine) {
       interface FetchResponse {
         data?: { content?: string };
         content?: string;
       }
       const parsed = JSON.parse(jsonLine) as FetchResponse;
-      return { content: parsed.data?.content || parsed.content || "" };
+      return parsed.data?.content || parsed.content || "";
     }
-    return { content: "" };
+    return "";
   }
 }
 
-async function cliFetchWeb(
-  url: string,
-  maxChars: number,
-): Promise<WebFetchResult> {
+async function cliFetchWeb(url: string, maxChars: number): Promise<WebFetchResult> {
   const args = [
     "fetch-web",
     url,
@@ -239,6 +226,17 @@ async function cliFetchWeb(
     "--json",
   ];
   const output = await runCliCommand(args);
+  if (!output) {
+    return {
+      url,
+      finalUrl: url,
+      contentType: "",
+      title: "",
+      truncated: false,
+      content: "",
+    };
+  }
+
   try {
     interface WebResponse {
       data?: WebFetchResult;
@@ -263,7 +261,7 @@ async function cliFetchWeb(
     };
   } catch {
     const lines = output.split("\n");
-    const jsonLine = lines.find(line => line.startsWith("{"));
+    const jsonLine = lines.find((line) => line.startsWith("{"));
     if (jsonLine) {
       interface WebResponse {
         data?: WebFetchResult;
@@ -287,7 +285,14 @@ async function cliFetchWeb(
         content: parsed.content || "",
       };
     }
-    return { url, finalUrl: url, contentType: "", title: "", truncated: false, content: "" };
+    return {
+      url,
+      finalUrl: url,
+      contentType: "",
+      title: "",
+      truncated: false,
+      content: "",
+    };
   }
 }
 
@@ -337,142 +342,172 @@ export default tool({
   },
 
   execute: async (args): Promise<string> => {
-    try {
-      switch (args.operation) {
-        case "search": {
-          if (!args.query) {
-            return '❌ Error: --query is required for search operation\n\nUsage: @web-search operation=search query="your search" limit=10 engines=["duckduckgo"]';
-          }
-
-          const limit = Math.min(Math.max(args.limit || 10, 1), 50);
-          const query = args.query;
-          const engines = args.engines;
-          const searchMode = args.searchMode || "request";
-
-          try {
-            const results = await callDaemonApi<SearchResult[]>("/search", {
-              query,
-              limit,
-              engines,
-              searchMode,
-            });
-
-            return formatSearchResults(results, query, limit);
-          } catch {
-            const results = await cliSearch(query, limit, engines);
-            return formatSearchResults(results, query, limit);
-          }
+    switch (args.operation) {
+      case "search": {
+        if (!args.query) {
+          return '❌ Error: --query is required for search operation\n\nUsage: @web-search operation=search query="your search" limit=10 engines=["duckduckgo"]';
         }
 
-        case "fetchWeb": {
-          if (!args.url) {
-            return '❌ Error: --url is required for fetchWeb operation\n\nUsage: @web-search operation=fetchWeb url="https://example.com" maxChars=30000';
-          }
+        const limit = Math.min(Math.max(args.limit || 10, 1), 50);
+        const query = args.query;
+        const engines = args.engines;
 
-          const maxChars = Math.min(
-            Math.max(args.maxChars || 30000, 1000),
-            200000,
-          );
+        // Try daemon first
+        const daemonResults = await callDaemonApi<SearchResponse>("/search", {
+          query,
+          limit,
+          engines,
+          searchMode: args.searchMode || "request",
+        });
 
-          try {
-            const result = await callDaemonApi<WebFetchResult>("/fetch-web", {
-              url: args.url,
-              maxChars,
-            });
-            return formatWebFetch(result);
-          } catch {
-            const result = await cliFetchWeb(args.url, maxChars);
-            return formatWebFetch(result);
-          }
+        if (daemonResults) {
+          return formatSearchResults(daemonResults as any, query, limit);
         }
 
-        case "fetchGithubReadme": {
-          if (!args.url) {
-            return '❌ Error: --url is required for fetchGithubReadme operation\n\nUsage: @web-search operation=fetchGithubReadme url="https://github.com/owner/repo"';
-          }
-
-          try {
-            const result = await callDaemonApi<FetchResult>(
-              `/fetch-github-readme`,
-              { url: args.url },
-            );
-            return formatContent(result.content, args.url);
-          } catch {
-            const result = await cliFetch("github-readme", args.url);
-            return formatContent(result.content || "", args.url);
-          }
-        }
-
-        case "fetchCsdnArticle": {
-          if (!args.url) {
-            return '❌ Error: --url is required for fetchCsdnArticle operation\n\nUsage: @web-search operation=fetchCsdnArticle url="https://blog.csdn.net/..."';
-          }
-
-          try {
-            const result = await callDaemonApi<FetchResult>(`/fetch-csdn`, {
-              url: args.url,
-            });
-            return formatContent(result.content, args.url);
-          } catch {
-            const result = await cliFetch("csdn", args.url);
-            return formatContent(result.content || "", args.url);
-          }
-        }
-
-        case "fetchJuejinArticle": {
-          if (!args.url) {
-            return '❌ Error: --url is required for fetchJuejinArticle operation\n\nUsage: @web-search operation=fetchJuejinArticle url="https://juejin.cn/post/..."';
-          }
-
-          try {
-            const result = await callDaemonApi<FetchResult>(`/fetch-juejin`, {
-              url: args.url,
-            });
-            return formatContent(result.content, args.url);
-          } catch {
-            const result = await cliFetch("juejin", args.url);
-            return formatContent(result.content || "", args.url);
-          }
-        }
-
-        case "fetchLinuxDoArticle": {
-          if (!args.url) {
-            return '❌ Error: --url is required for fetchLinuxDoArticle operation\n\nUsage: @web-search operation=fetchLinuxDoArticle url="https://linux.do/t/topic/123.json"';
-          }
-
-          try {
-            const result = await callDaemonApi<FetchResult>(`/fetch-linuxdo`, {
-              url: args.url,
-            });
-            return formatContent(result.content, args.url);
-          } catch {
-            const result = await cliFetch("linuxdo", args.url);
-            return formatContent(result.content || "", args.url);
-          }
-        }
-
-        default:
-          return `❌ Error: Unknown operation "${args.operation}"\n\nSupported operations: search, fetchWeb, fetchGithubReadme, fetchCsdnArticle, fetchJuejinArticle, fetchLinuxDoArticle`;
+        // Fallback to CLI
+        const cliResults = await cliSearch(query, limit, engines);
+        return formatSearchResults(cliResults, query, limit);
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return `❌ Error: ${message}`;
+
+      case "fetchWeb": {
+        if (!args.url) {
+          return '❌ Error: --url is required for fetchWeb operation\n\nUsage: @web-search operation=fetchWeb url="https://example.com" maxChars=30000';
+        }
+
+        const maxChars = Math.min(
+          Math.max(args.maxChars || 30000, 1000),
+          200000
+        );
+
+        // Try daemon first
+        const daemonResult = await callDaemonApi<WebFetchResult>("/fetch-web", {
+          url: args.url,
+          maxChars,
+        });
+
+        if (daemonResult) {
+          return formatWebFetch(daemonResult);
+        }
+
+        // Fallback to CLI
+        const cliResult = await cliFetchWeb(args.url, maxChars);
+        return formatWebFetch(cliResult);
+      }
+
+      case "fetchGithubReadme": {
+        if (!args.url) {
+          return '❌ Error: --url is required for fetchGithubReadme operation\n\nUsage: @web-search operation=fetchGithubReadme url="https://github.com/owner/repo"';
+        }
+
+        // Try daemon first
+        const daemonResult = await callDaemonApi<{ content: string }>(
+          `/fetch-github-readme`,
+          { url: args.url }
+        );
+
+        if (daemonResult) {
+          return formatContent(daemonResult.content, args.url);
+        }
+
+        // Fallback to CLI
+        const content = await cliFetch("github-readme", args.url);
+        return formatContent(content, args.url);
+      }
+
+      case "fetchCsdnArticle": {
+        if (!args.url) {
+          return '❌ Error: --url is required for fetchCsdnArticle operation\n\nUsage: @web-search operation=fetchCsdnArticle url="https://blog.csdn.net/..."';
+        }
+
+        // Try daemon first
+        const daemonResult = await callDaemonApi<{ content: string }>(`/fetch-csdn`, {
+          url: args.url,
+        });
+
+        if (daemonResult) {
+          return formatContent(daemonResult.content, args.url);
+        }
+
+        // Fallback to CLI
+        const content = await cliFetch("csdn", args.url);
+        return formatContent(content, args.url);
+      }
+
+      case "fetchJuejinArticle": {
+        if (!args.url) {
+          return '❌ Error: --url is required for fetchJuejinArticle operation\n\nUsage: @web-search operation=fetchJuejinArticle url="https://juejin.cn/post/..."';
+        }
+
+        // Try daemon first
+        const daemonResult = await callDaemonApi<{ content: string }>(`/fetch-juejin`, {
+          url: args.url,
+        });
+
+        if (daemonResult) {
+          return formatContent(daemonResult.content, args.url);
+        }
+
+        // Fallback to CLI
+        const content = await cliFetch("juejin", args.url);
+        return formatContent(content, args.url);
+      }
+
+      case "fetchLinuxDoArticle": {
+        if (!args.url) {
+          return '❌ Error: --url is required for fetchLinuxDoArticle operation\n\nUsage: @web-search operation=fetchLinuxDoArticle url="https://linux.do/t/topic/123.json"';
+        }
+
+        // Try daemon first
+        const daemonResult = await callDaemonApi<{ content: string }>(`/fetch-linuxdo`, {
+          url: args.url,
+        });
+
+        if (daemonResult) {
+          return formatContent(daemonResult.content, args.url);
+        }
+
+        // Fallback to CLI
+        const content = await cliFetch("linuxdo", args.url);
+        return formatContent(content, args.url);
+      }
+
+      default:
+        return `❌ Error: Unknown operation "${args.operation}"\n\nSupported operations: search, fetchWeb, fetchGithubReadme, fetchCsdnArticle, fetchJuejinArticle, fetchLinuxDoArticle`;
     }
   },
 });
 
 function formatSearchResults(
-  results: SearchResult[],
+  results: SearchResult[] | SearchResponse,
   query: string,
-  limit: number,
+  limit: number
 ): string {
-  if (!results || results.length === 0) {
+  // Handle case where results might be wrapped in an object
+  let resultsArray: SearchResult[];
+  
+  if (Array.isArray(results)) {
+    resultsArray = results;
+  } else if (results && typeof results === "object") {
+    // Check for nested results
+    const response = results as SearchResponse;
+    if (response.data?.results) {
+      resultsArray = response.data.results;
+    } else if (response.results) {
+      resultsArray = response.results;
+    } else {
+      resultsArray = [];
+    }
+  } else {
+    resultsArray = [];
+  }
+
+  if (!resultsArray || resultsArray.length === 0) {
     return `🔍 Search results for "${query}"\n\nNo results found.`;
   }
 
   const lines = [`🔍 Search results for "${query}"`, ""];
 
-  results.forEach((result, index) => {
+  resultsArray.forEach((result, index) => {
     lines.push(`${index + 1}. ${result.title}`);
     lines.push(`   ${result.url}`);
     if (result.description) {
@@ -485,7 +520,7 @@ function formatSearchResults(
     lines.push("");
   });
 
-  lines.push(`Found ${results.length} results (limit: ${limit})`);
+  lines.push(`Found ${resultsArray.length} results (limit: ${limit})`);
 
   return lines.join("\n");
 }
