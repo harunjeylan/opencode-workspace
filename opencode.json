@@ -1,6 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": ["opencode-wakatime", "@zenobius/opencode-skillful"],
+  "agent": {
+    "build": {
+      "disable": true
+    }
+  },
   "mcp": {
     "docker-mcp": {
       "type": "local",

@@ -11,5 +11,5 @@
     "resolveJsonModule": true,
     "types": ["bun-types"],
   },
-  "include": ["sandbox/**/*", "src/**/*", "tools/**/*"],
+  "include": ["sandbox/**/*", "src/**/*", "tools/**/*", "nllb-translation.ts"],
 }

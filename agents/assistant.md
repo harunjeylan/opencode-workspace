@@ -251,6 +251,142 @@ Before converting, optimize text without prompting (silent preprocessing):
 
 ---
 
+## Translation
+
+Use `@nllb-translation` for translating text between 100+ languages.
+
+### Supported Languages (50+)
+
+**African:** Amharic (amh_Ethi), Afaan Oromo (gaz_Latn), Somali (som_Latn), Swahili (swa_Latn), Hausa (hau_Latn), Yoruba (yor_Latn), Zulu (zul_Latn), Xhosa (xho_Latn), Igbo (ibo_Latn), etc.
+
+**European:** English (eng_Latn), French (fra_Latn), Spanish (spa_Latn), German (deu_Latn), Italian (ita_Latn), Portuguese (por_Latn), Dutch (dut_Latn), Polish (pol_Latn), etc.
+
+**Asian / Middle East:** Arabic (arb_Arab), Hindi (hin_Deva), Bengali (ben_Beng), Japanese (jpn_Jpan), Korean (kor_Hang), Chinese (zho_Hans/zho_Hant), Turkish (tur_Latn), Vietnamese (vie_Latn), Thai (tha_Thai), Indonesian (ind_Latn), etc.
+
+**South Asian:** Tamil (tam_Taml), Telugu (tel_Telu), Marathi (mar_Deva), Gujarati (guj_Gujr), Punjabi (pan_Guru), Nepali (nep_Nepali), Sinhala (sin_Sinh), etc.
+
+**Slavic:** Russian (rus_Cyrl), Ukrainian (ukr_Cyrl), Serbian (srp_Cyrl), Bulgarian (bul_Latn), Polish (pol_Latn), Czech (ces_Latn), etc.
+
+### Usage
+
+**Text → Text (inline)**
+```
+@nllb-translation text='Hello world' source_lang=eng_Latn target_lang=fra_Latn
+
+@nllb-translation text='ሰለም' source_lang=amh_Ethi target_lang=eng_Latn
+```
+
+**File → Text**
+```
+@nllb-translation inputType=file inputFile=/path/to/input.txt source_lang=eng_Latn target_lang=amh_Ethi
+```
+
+**File → File**
+```
+@nllb-translation inputType=file inputFile=/path/to/input.txt outputType=file outputFile=/path/to/output.txt source_lang=eng_Latn target_lang=amh_Ethi
+```
+
+**Text → File**
+```
+@nllb-translation text='Hello' outputType=file outputFile=/path/to/output.txt source_lang=eng_Latn target_lang=amh_Ethi
+```
+
+### Arguments
+| Arg | Required | Description |
+|-----|----------|-------------|
+| `text` | Conditional | Text to translate (required when inputType=text) |
+| `inputType` | No | Input type: 'text' (default) or 'file' |
+| `outputType` | No | Output type: 'text' (default) or 'file' |
+| `inputFile` | Conditional | Path to input file (required when inputType=file). Supports .txt and .md |
+| `outputFile` | Conditional | Path to output file (required when outputType=file). Output: .txt or .md |
+| `source_lang` | Yes | Source language code (e.g., amh_Ethi) |
+| `target_lang` | Yes | Target language code (e.g., eng_Latn) |
+
+### Notes
+- Text is automatically split into ~350 word chunks for optimal translation quality
+- Supports both inline text and file input/output
+- File inputs support `.txt` and `.md` extensions (markdown is automatically stripped)
+- File outputs auto-create parent directories if needed
+- Both source and target language codes are validated against supported list
+- **Requires Python environment** - see Python Tool Installation section below
+
+---
+
+## Python Tool Installation Flow
+
+Some tools (like `@nllb-translation`) require Python and dependencies.
+
+### First-Time Setup
+
+When a Python tool returns an installation message:
+
+```
+⚠️  Python 3 is not installed on your system
+
+📦 Install Python 3:
+  Ubuntu/Debian:  sudo apt update && sudo apt install python3 python3-pip python3-venv
+  macOS:          brew install python
+  ...
+
+Would you like me to run the installation commands?
+```
+
+### Installation Steps (Automatic)
+
+**If user agrees to install:**
+
+1. **Install Python** (if missing)
+   - Run system commands via `@bash`
+   - Tell user: "Python installed! You may need to restart OpenCode"
+
+2. **Create Virtual Environment** (per-tool, one-time)
+   ```bash
+   python3 -m venv .opencode/src/[tool-name]/.venv
+   ```
+
+3. **Install Tool Dependencies** (per-tool)
+   ```bash
+   .opencode/src/[tool-name]/.venv/bin/pip install -r .opencode/src/[tool-name]/requirements.txt
+   ```
+
+4. **Retry the tool** after installation completes
+
+### Manual Installation
+
+**If user prefers manual setup:**
+
+1. Display the exact commands needed
+2. User runs them in their terminal
+3. Tell user to restart OpenCode after completion
+4. Tool will work on next use
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| "Python not found" after install | Restart OpenCode |
+| Permission errors | Use `sudo` for system Python |
+| Package conflicts | Delete `.venv` and recreate |
+| Slow first run | Normal - model downloads on first use |
+
+### Tool Structure
+
+```
+.opencode/
+├── lib/
+│   ├── python-env.ts               # Environment checker
+│   └── process-runner.ts           # Process helper
+├── src/
+│   └── [tool-name]/
+│       ├── [tool-name].py          # Python implementation
+│       ├── requirements.txt         # Dependencies
+│       └── .venv/                  # Virtual environment (auto-created)
+└── tools/
+    └── [tool-name].ts              # TypeScript wrapper
+```
+
+---
+
 ## Tools
 
 | Task | Tool/Agent |
@@ -263,6 +399,7 @@ Before converting, optimize text without prompting (silent preprocessing):
 | Setup workspace | workspace skill |
 | Find skills | find-skills skill |
 | Text-to-speech | kokoro-tts (after loading tts-prep skill) |
+| Translation | @nllb-translation |
 
 ## Commands
 
