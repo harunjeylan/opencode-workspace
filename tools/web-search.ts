@@ -73,6 +73,8 @@ async function startDaemon(): Promise<boolean> {
         DEFAULT_SEARCH_ENGINE: "duckduckgo",
         USE_PROXY: "false",
       },
+      stdout: "pipe",
+      stderr: "pipe",
     });
 
     const startTime = Date.now();

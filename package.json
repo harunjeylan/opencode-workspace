@@ -2,7 +2,7 @@
   "dependencies": {
     "@aidalinfo/office-to-markdown": "^1.0.2",
     "@mohtasham/md-to-docx": "^2.9.0",
-    "@opencode-ai/plugin": "1.4.0",
+    "@opencode-ai/plugin": "1.4.2",
     "jszip": "^3.10.1",
     "markitdown-ts": "^0.0.10",
     "md-to-pdf": "^5.2.5",
