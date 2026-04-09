@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-wakatime", "@zenobius/opencode-skillful"],
+  "plugin": ["opencode-wakatime"],
   "agent": {
     "build": {
       "disable": true

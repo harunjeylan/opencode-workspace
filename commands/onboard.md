@@ -1,6 +1,6 @@
 ---
 description: Transform any folder into a purpose-built workspace through interactive discovery and automated setup.
-model: opencode/minimax-m2.5-free
+model: opencode/big-pickle
 agent: assistant
 ---
 

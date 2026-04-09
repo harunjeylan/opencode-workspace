@@ -1,30 +1,45 @@
 /**
  * @markitdown - Universal Document Converter
  *
- * Converts various file formats to Markdown using Python markitdown CLI.
- *
- * Requirements:
- *   pip install markitdown
+ * Converts various file formats to Markdown.
+ * Uses specialized converters for optimal results:
+ *   - DOCX: @aidalinfo/office-to-markdown (advanced: math, tables, styles)
+ *   - Others: markitdown-ts (PDF, XLSX, HTML, URLs, etc.)
  *
  * Supported formats:
- *   PDF, DOCX, PPTX, XLSX, HTML, Images, Audio, Video,
- *   Text files, CSV, XML, Jupyter Notebooks, ZIP,
- *   URLs, YouTube, RSS, and more
+ *   PDF, DOCX, XLSX, HTML, Images, Audio, Text files,
+ *   CSV, XML, RSS, Atom, Jupyter Notebooks (.ipynb),
+ *   ZIP files, URLs, YouTube (transcripts)
+ *
+ * Note: PowerPoint (.pptx) is not yet supported.
  *
  * Usage:
  *   @markitdown input=document.pdf output=document.md
- *   @markitdown input=file.pptx
+ *   @markitdown input=file.docx
  *   @markitdown input=https://example.com
  */
 
 import fs from "node:fs";
 import path from "node:path";
 
+import { MarkItDown } from "markitdown-ts";
+import { OfficeToMarkdown } from "@aidalinfo/office-to-markdown";
 import { tool } from "@opencode-ai/plugin";
+
+/** Result type for conversion operations */
+type ConversionResult =
+  | { success: true; markdown: string }
+  | { success: false; error: string };
+
+/** Check if file is a DOCX based on extension */
+function isDocx(filePath: string): boolean {
+  const ext = path.extname(filePath).toLowerCase();
+  return ext === ".docx";
+}
 
 export default tool({
   description:
-    "Universal document converter - converts PDF, DOCX, PPTX, XLSX, HTML, images, text, URLs to Markdown using Python markitdown CLI",
+    "Universal document converter - converts PDF, DOCX, XLSX, HTML, images, text, URLs to Markdown. Note: PPTX not yet supported.",
 
   args: {
     input: tool.schema
@@ -48,15 +63,15 @@ export default tool({
         "",
         "Usage: @markitdown input=document.pdf output=document.md",
         "",
-        "Requirements:",
-        "  pip install markitdown",
-        "",
         "Supported formats:",
-        "  - PDF, DOCX, PPTX, XLSX, HTML",
-        "  - Images, Audio, Video",
+        "  - PDF, DOCX, XLSX, HTML",
+        "  - Images, Audio",
         "  - Text files, CSV, XML",
-        "  - Jupyter Notebooks, ZIP",
-        "  - URLs, YouTube, RSS",
+        "  - Jupyter Notebooks (.ipynb)",
+        "  - URLs, YouTube (transcripts)",
+        "  - ZIP files",
+        "",
+        "Note: PPTX (.pptx) is not yet supported.",
       ].join("\n");
     }
 
@@ -71,7 +86,11 @@ export default tool({
 
     // Validate file exists
     if (!isUrl && !fs.existsSync(inputPath)) {
-      return `❌ Error: File not found: ${inputPath}`;
+      return [
+        "❌ Error: File not found",
+        "",
+        `Path: ${inputPath}`,
+      ].join("\n");
     }
 
     // Generate output path
@@ -88,26 +107,38 @@ export default tool({
       outputPath = path.join(context.directory, outputPath);
     }
 
-    // Try Python CLI
-    const result = await tryPythonMarkitdown(inputPath, outputPath);
+    // Convert based on file type
+    let result: ConversionResult;
 
-    // If Python fails, return error with installation instructions
+    if (isDocx(inputPath)) {
+      // Use specialized DOCX converter for better results
+      result = await convertDocx(inputPath);
+    } else {
+      // Use markitdown-ts for all other formats
+      result = await convertWithMarkitdownTs(inputPath);
+    }
+
+    // Handle conversion result
     if (!result.success) {
       return [
-        `❌ Error: ${result.error}`,
+        "❌ Conversion failed",
         "",
-        "Make sure Python markitdown is installed:",
-        "  pip install markitdown",
+        `Error: ${result.error}`,
         "",
-        "Or try: python3 -m markitdown",
+        `Input: ${isUrl ? inputPath : path.relative(context.directory, inputPath)}`,
+        "",
+        "Make sure the file format is supported.",
+        "Note: PPTX (.pptx) is not yet supported.",
       ].join("\n");
     }
+
+    // Write markdown to output file
+    fs.writeFileSync(outputPath, result.markdown, "utf-8");
 
     // Get file stats
     const stats = fs.statSync(outputPath);
     const sizeKB = (stats.size / 1024).toFixed(1);
-    const content = fs.readFileSync(outputPath, "utf-8");
-    const lines = content.split("\n").length;
+    const lines = result.markdown.split("\n").length;
 
     return [
       "✅ Conversion completed!",
@@ -123,43 +154,46 @@ export default tool({
 });
 
 /**
- * Try to convert using Python markitdown CLI (using Bun spawn)
+ * Convert DOCX using specialized converter (better math, tables, styles)
  */
-async function tryPythonMarkitdown(
-  inputPath: string,
-  outputPath: string,
-): Promise<{ success: boolean; error?: string }> {
+async function convertDocx(filePath: string): Promise<ConversionResult> {
   try {
-    // Use Bun.spawn for better compatibility
-    const process = Bun.spawn(["sh", "-c", `markitdown "${inputPath}"`]);
+    const converter = new OfficeToMarkdown({
+      headingStyle: "atx",
+      preserveTables: true,
+      convertMath: true,
+    });
 
-    // Wait for process to exit
-    const exitCode = await process.exited;
+    const result = await converter.convert(filePath);
 
-    const stdout = await new Response(process.stdout).text();
-    const stderr = await new Response(process.stderr).text();
-
-    if (exitCode === 0 && stdout.trim()) {
-      fs.writeFileSync(outputPath, stdout, "utf-8");
-      return { success: true };
+    if (!result.markdown || result.markdown.trim() === "") {
+      return { success: false, error: "DOCX conversion returned empty content" };
     }
 
-    if (stderr.includes("markitdown") || stderr.includes("not found")) {
-      return {
-        success: false,
-        error: "markitdown not found. Install: pip install markitdown",
-      };
-    }
-
-    return { success: false, error: stderr || "Conversion failed" };
+    return { success: true, markdown: result.markdown };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes("ENOENT") || message.includes("not found")) {
-      return {
-        success: false,
-        error: "markitdown not found. Install: pip install markitdown",
-      };
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Convert other formats using markitdown-ts
+ */
+async function convertWithMarkitdownTs(
+  filePath: string,
+): Promise<ConversionResult> {
+  try {
+    const markitdown = new MarkItDown();
+    const result = await markitdown.convert(filePath);
+
+    if (!result || !result.markdown) {
+      return { success: false, error: "Conversion returned empty result" };
     }
+
+    return { success: true, markdown: result.markdown };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     return { success: false, error: message };
   }
 }
